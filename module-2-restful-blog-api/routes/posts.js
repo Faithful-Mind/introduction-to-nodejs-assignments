@@ -1,32 +1,7 @@
+const express = require('express');
+const router = express.Router();
 const { check, validationResult } = require('express-validator/check');
-const store = require('../data/store');
-
-var posts = {
-  getPosts(req, res) {
-    res.status(200).send(store.posts);
-  },
-  addPost(req, res) {
-    var obj = req.body;
-    if (!obj.comments) {
-      obj.comments = [];
-    }
-    var postId = store.posts.length;
-    store.posts.push(obj);
-    res.status(201).send({postId: postId});
-  },
-  updatePost(req, res) {
-    var obj = req.body;
-    if (!obj.comments) {
-      obj.comments = [];
-    }
-    store.posts[req.params.postId] = req.body;
-    res.status(200).send(store.posts[req.params.postId]);
-  },
-  removePost(req, res) {
-    store.posts.splice(req.params.postId, 1);
-    res.status(204).send();
-  }
-};
+const store = require('../models/store');
 
 var validators = [
   check('name').not().isEmpty(),
@@ -37,11 +12,41 @@ var validators = [
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
     }
+    if (!req.body.comments) { // give comments field an empty array if absent
+      req.body.comments = [];
+    }
+    // filter unwanted properties
+    var { name, url, text, comments } = req.body;
+    req.postObj = { name, url, text, comments };
     next();
   }
 ];
 
-posts.addPost = [...validators, posts.addPost];
-posts.updatePost = [...validators, posts.updatePost];
+// Get posts
+router.get('/posts', (req, res) => {
+  res.status(200).send(store.posts);
+});
 
-module.exports = posts;
+// Add a post
+router.post('/posts', [...validators, (req, res) => {
+  var postId = store.posts.length;
+  store.posts.push(req.postObj);
+  res.status(201).send({postId: postId});
+}]);
+
+// Update a post by postId
+router.put('/posts/:postId', [...validators, (req, res) => {
+  store.posts[req.params.postId] = req.postObj;
+  res.status(200).send(store.posts[req.params.postId]);
+}]);
+
+// Delete a post by postId
+router.delete('/posts/:postId', (req, res) => {
+  if (!store.posts[req.params.postId]) {
+    return res.sendStatus(404);
+  }
+  store.posts.splice(req.params.postId, 1);
+  res.status(204).send();
+});
+
+module.exports = router;
