@@ -1,0 +1,33 @@
+{
+  "name": "restful-blog-api",
+  "version": "0.0.1",
+  "description": "A RESTful Blog API with MongoDB",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node-dev server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Faithful-Mind/introduction-to-nodejs-assignments/tree/master/module-2-restful-blog-api"
+  },
+  "keywords": [
+    "RESTful",
+    "API",
+    "blog",
+    "MongoDB"
+  ],
+  "author": "Faithful-Mind",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "1.18.3",
+    "errorhandler": "1.5.0",
+    "express": "4.16.3",
+    "express-validator": "5.2.0",
+    "mongodb": "2.2.35",
+    "morgan": "1.9.0"
+  },
+  "devDependencies": {
+    "node-dev": "^3.1.3"
+  }
+}
