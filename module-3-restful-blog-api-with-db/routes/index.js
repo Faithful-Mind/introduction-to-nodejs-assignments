@@ -1,7 +1,9 @@
-const posts = require('./posts');
-const comments = require('./comments');
+const router = require('express').Router();
+const postsRouter = require('./posts');
+const commentsRouter = require('./comments');
 
-module.exports = {
-  postsRouter: posts,
-  commentsRouter: comments
-}
+postsRouter.use('/posts/:postId/', commentsRouter);
+
+router.use(postsRouter);
+
+module.exports = router;

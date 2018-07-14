@@ -1,80 +1,98 @@
 const express = require('express');
-const router = express.Router();
-const { check, validationResult } = require('express-validator/check');
+const router = express.Router({ mergeParams: true });
+const { check, param, validationResult } = require('express-validator/check');
 const postModel = require('../models/postModel');
-const mongodb = require('mongodb');
+const sendError = require('./send-error');
 
-var validators = [
-  check('text').not().isEmpty(),
+var idValidator = [
+  param('commentId').isInt().toInt(),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return sendError(res, 404);
+    next();
+  }
+];
+
+var inputValidators = [
+  check('text').trim().not().isEmpty(),
+  param('commentId').optional().isInt().toInt(),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { // validation error handling
       return res.status(422).json({ errors: errors.array() });
     }
+    // filter unwanted properties
+    var { text } = req.body;
+    req.commentObj = { text };
     next();
   }
 ];
 
-// Get comments
-router.get('/posts/:postId/comments', (req, res, next) =>
-  postModel.then( db => db.collection('posts').findOne(
-    { _id: mongodb.ObjectID(req.params.postId) }
-  ) )
-    .then( post => res.status(200).send(post.comments) )
-    .catch(error => next(error))
+// Get comment(s)
+router.get('/comments', (req, res) =>
+  (req.query.id ? postModel.getCommentById(req.params.postId, req.query.id)
+    : postModel.getComments(req.params.postId))
+    .then( comments => {
+      if (!comments) throw 404;
+      res.status(200).send(comments);
+    } )
+    .catch(error => {
+      console.error(error);
+      sendError(res, Number.isInteger(error) ? error : 500);
+    })
+);
+// Get a comment by commentId
+router.get('/comments/:commentId', idValidator, (req, res) =>
+  postModel.getCommentById(req.params.postId, req.params.commentId)
+    .then( comment => {
+      if (!comment) throw 404;
+      res.status(200).send(comment);
+    } )
+    .catch(error => {
+      console.error(error);
+      sendError(res, Number.isInteger(error) ? error : 500);
+    })
 );
 
-// Post a comment
-router.post('/posts/:postId/comments', [...validators, (req, res, next) =>
-  postModel.then( db => db.collection('posts').findOne(
-    { _id: mongodb.ObjectID(req.params.postId) }
-  ) )
-    .then( post =>
-      postModel.then( db => db.collection('posts').update(
-        { _id: mongodb.ObjectID(req.params.postId) },
-        { $push: {
-          comments:
-            {
-              // get the last commentId, also biggest, and add by 1 as new commentId
-              commentId: post.comments[post.comments.length - 1].commentId + 1,
-              text: req.body.text
-            }
-          }
-        }
-      ) )
-        .then( results => res.status(201).send(results) )
-        .catch(error => next(error))
-    )
-    .catch(error => next(error))
-
-]);
+// Add a comment
+router.post('/comments', inputValidators, (req, res) =>
+  postModel.addComment(req.params.postId, req.commentObj.text)
+    .then( comment => {
+      if (!comment) throw 500;
+      res.status(201).send(comment);
+    } )
+    .catch(error => {
+      console.error(error);
+      sendError(res, Number.isInteger(error) ? error : 500);
+    })
+);
 
 // Update a comment by commentId
-router.put('/posts/:postId/comments/:commentId', [...validators, (req, res, next) =>
-  postModel.then( db => db.collection('posts').update(
-    {
-      _id: mongodb.ObjectID(req.params.postId),
-      'comments.commentId': parseInt(req.params.commentId)
-    },
-    { $set: { 'comments.$.text': req.body.text } }
-  ) )
-    .then( results => res.status(200).send(results) )
-    .catch(error => next(error))
-]);
+router.put('/comments/:commentId', inputValidators, (req, res) =>
+  postModel.updateCommentById(req.params.postId, req.params.commentId,
+    req.commentObj.text
+  )
+    .then( comment => {
+      if (!comment) throw 500;
+      res.status(200).send(comment);
+    } )
+    .catch(error => {
+      console.error(error);
+      sendError(res, Number.isInteger(error) ? error : 500);
+    })
+);
 
 // Delete a comment by commentId
-router.delete('/posts/:postId/comments/:commentId', (req, res, next) =>
-  postModel.then( db => db.collection('posts').update(
-    {
-      _id: mongodb.ObjectID(req.params.postId),
-      'comments.commentId': parseInt(req.params.commentId)
-    },
-    { $pull: { 'comments': { commentId: parseInt(req.params.commentId) } } }
-  ) )
-    .then(results => res.status(200).send(results))
-    .catch(error => next(error))
-
-  // .then( () => res.status(204).send() )
+router.delete('/comments/:commentId', idValidator, (req, res) =>
+  postModel.deleteCommentById(req.params.postId, req.params.commentId)
+    .then( results => {
+      if (!results) throw 404;
+      res.status(204).send();
+    } )
+    .catch(error => {
+      console.error(error);
+      sendError(res, Number.isInteger(error) ? error : 500);
+    })
 );
 
 module.exports = router;
