@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const logger = require('morgan');
 const mongoose = require('mongoose');
+const errorhandler = require('errorhandler');
 
 mongoose.connect('mongodb://localhost:27017/edx-course-db').catch(err => {
   console.error(err);
@@ -51,5 +52,7 @@ app.delete('/accounts/:id', (req, res) => {
     .then(result => result ? res.status(204).send() : res.status(404).send())
     .catch(err => { console.error(err); res.sendStatus(500); });
 });
+
+app.use(errorhandler());
 
 app.listen(3000);
