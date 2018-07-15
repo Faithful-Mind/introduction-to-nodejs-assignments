@@ -1,0 +1,32 @@
+{
+  "name": "rest-api-with-express-and-mongoose",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node-dev server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Faithful-Mind/introduction-to-nodejs-assignments/tree/master/module-4-rest-api-with-mongoose"
+  },
+  "keywords": [
+    "RESTful",
+    "API",
+    "Mongoose"
+  ],
+  "author": "Faithful-Mind",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "1.18.3",
+    "errorhandler": "1.5.0",
+    "express": "4.16.3",
+    "mongoose": "5.2.3",
+    "morgan": "1.9.0"
+  },
+  "devDependencies": {
+    "install": "0.12.1",
+    "node-dev": "3.1.3"
+  }
+}
