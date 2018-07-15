@@ -1,98 +1,121 @@
-const mongodb = require('mongodb');
+const mongoose = require('mongoose');
 
-let store = {
-  posts: [
-    {name: 'Top 10 ES6 Features every Web Developer must know',
-    url: 'https://webapplog.com/es6',
-    text: 'This essay will give you a quick introduction to ES6. If you don’t know what is ES6, it’s a new JavaScript implementation.',
-    comments: [
-      {text: 'Cruel…..var { house, mouse} = No type optimization at all'},
-      {text: 'I think you’re undervaluing the benefit of ‘let’ and ‘const’.'},
-      {text: '(p1,p2)=>{ … } ,i understand this ,thank you !'}
-    ]
-    }
-  ]
-};
 const url = 'mongodb://localhost:27017/edx-course-db';
 
-var db = mongodb.MongoClient.connect(url).catch(error => {
-  console.error(error);
-  process.exit(1);
+mongoose.connect(url).catch(err => console.error(err));
+
+const commentSchema = mongoose.Schema({
+  commentId: Number,
+  text: String,
+}, { _id: false });
+
+const postSchema = mongoose.Schema({
+  name: String,
+  url: String,
+  text: String,
+  comments: [commentSchema],
 });
 
-exports.getPosts = () =>
-  db.then( db => db.collection('posts').find({}).toArray() );
+const Post = mongoose.model("Post", postSchema);
 
-exports.getPostById = (postId) =>
-  db.then( db => db.collection('posts').findOne(
-    { _id: mongodb.ObjectID(postId) }
-  ) );
+exports.getPosts = () => Post.find();
 
-exports.addPost = (postObj) =>
-  db.then( db => db.collection('posts').insertOne(postObj) )
-    .then( result => result.ops[result.insertedCount - 1] );
+exports.getPostById = (postId) => Post.findById(postId);
 
-exports.updatePostById = (postId, postObj) =>
-  db.then( db => db.collection('posts').updateOne(
-    { _id: mongodb.ObjectID(postId) }, { $set: postObj }
-  ) ).then( result => {
-    if (!result.result.ok || !result.modifiedCount) return null;
-    return { postId, ...postObj };
-  } );
+/**
+ * Add a post.
+ * @param {Object} postObj post object like `{ _id: Number, name: String,
+                                               url: String, text: String }`
+ * @returns added post object if success else `null`
+ */
+exports.addPost = (postObj) => {
+  var { name, url, text } = postObj;
+  var newPost = new Post({ name, url, text });
+  return newPost.save();
+};
 
+/**
+ * Update a post by ID.
+ * @param {Number} postId post ID to update
+ * @param {Object} postObj post object like `{ _id: Number, name: String,
+                                               url: String, text: String }`
+ * @returns updated post object if success else `null`
+ */
+exports.updatePostById = (postId, postObj) => {
+  var { name, url, text } = postObj;
+  return Post.findOne({ _id: postId }).then(post =>
+    post ? Object.assign(post, { name, url, text }) && post.save() : null
+  );
+};
+
+/**
+ * Delete a post by ID.
+ * @param {Number} postId post ID to delete
+ * @returns deleted post object like `{ _id: Number, name: String, url: String,
+                                        text: String }` if success else `null`
+ */
 exports.deletePostById = (postId) =>
-  db.then( db => db.collection('posts').deleteOne(
-    { _id: mongodb.ObjectID(postId) }
-  ) ).then( result => {
-    if (!result.result.ok || !result.deletedCount) return null;
-    return 'Deleted ' + result.deletedCount;
-  } );
+  Post.findOne({ _id: postId }).then(o => o ? o.remove() : null);
 
 exports.getComments = (postId) =>
-db.then( db => db.collection('posts').findOne(
-  { _id: mongodb.ObjectID(postId) }
-) ).then( post => (post || {}).comments );
+  exports.getPostById(postId).then(post => post ? post.comments : null);
 
 exports.getCommentById = (postId, commentId) =>
-  db.then( db => db.collection('posts').findOne(
-    {
-      _id: mongodb.ObjectID(postId), 'comments.commentId': parseInt(commentId)
-    }
-  ) ).then( post =>
-    ((post || {}).comments || []).find(ele => ele.commentId === commentId)
+  exports.getComments(postId).then(comments =>
+    (comments || []).find(ele => ele.commentId === commentId) || null
   );
 
+/**
+ * Add the text comment to specified post ID.
+ * @param {Number} postId post ID to locate coment
+ * @param {String} text comment's text content
+ * @returns generated comment object like `{ commentId: Number, text: String }`
+ * if success else `null`
+ */
 exports.addComment = (postId, text) =>
-  exports.getComments(postId).then( comments => {
-    // get the last commentId, also biggest, and add by 1 as new commentId
-    var commentId = (comments[comments.length -1] || 1).commentId + 1 || 1;
-    return db.then( db => db.collection('posts').updateOne(
-      { _id: mongodb.ObjectID(postId) },
-      { $push: { comments: { commentId, text } } }
-    ) ).then( result => {
-      if (!result.result.ok || !result.modifiedCount) return null;
-      return { commentId, text };
-    } );
-  } );
+  exports.getPostById(postId).then(post => {
+    if (!post) return null;
+    var comments = post.comments;
+    // get the last (also biggest) commentId and plus 1 as new commentId. Use 1 directly if NaN
+    var commentId = (comments[comments.length -1] || {}).commentId +1 || 1;
+    comments.push({ commentId, text });
+    return post.save().then(post => post ? { commentId, text } : null);
+  });
 
+/**
+ * Update a comment by text, comment ID & post ID.
+ * @param {Number} postId post ID to locate comment
+ * @param {Number} commentId comment ID to update
+ * @param {String} text comment's text content used to replace the old one
+ * @returns updated comment object like `{ commentId: Number, text: String }`
+ * if success else `null`
+ */
 exports.updateCommentById = (postId, commentId, text) =>
-  db.then( db => db.collection('posts').updateOne(
-    {
-      _id: mongodb.ObjectID(postId), 'comments.commentId': parseInt(commentId)
-    },
-    { $set: { 'comments.$.text': text } }
-  ) ).then( result => {
-    if (!result.result.ok || !result.modifiedCount) return null;
-    return { commentId, text };
-  } );
+  exports.getPostById(postId).then(post => {
+    if (!post) return null;
+    var comment = post.comments.find(ele => ele.commentId === commentId);
+    if (!comment) return null;
+    comment.text = text;
+    return post.save().then(post => post ? { commentId, text } : null);
+  });
 
+/**
+ * Delete a comment by comment ID & post ID.
+ * @param {Number} postId post ID to locate coment
+ * @param {Number} commentId comment ID to delete
+ * @returns deleted comment object like `{ commentId: Number, text: String }`
+ * if success else `null`
+ */
 exports.deleteCommentById = (postId, commentId) =>
-  db.then( db => db.collection('posts').updateOne(
-    {
-      _id: mongodb.ObjectID(postId), 'comments.commentId': parseInt(commentId)
-    },
-    { $pull: { 'comments': { commentId: parseInt(commentId) } } }
-  ) ).then( result => {
-    if (!result.result.ok || !result.modifiedCount) return null;
-    return 'Deleted';
-  } );
+  exports.getPostById(postId).then(post => {
+    if (!post) return null;
+    var ok = false, text = "";
+    for (let i = post.comments.length -1; i >= 0; i--) {
+      if (post.comments[i].commentId === commentId) {
+        text = post.comments[i].text;
+        post.comments.splice(i, 1);
+        ok = true;
+      }
+    }
+    return ok ? post.save().then(post => post ? { commentId, text } : null) : null;
+  });

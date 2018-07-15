@@ -22,13 +22,9 @@ var inputValidators = [
     if (!errors.isEmpty()) { // validation error handling
       return res.status(422).json({ errors: errors.array() });
     }
-    if (!req.body.comments) { // give comments field an empty array if absent
-      req.body.comments = [];
-    }
     // filter unwanted properties
-    var { name, url, text, comments } = req.body;
-    if (req.method === 'PUT') req.postObj = { name, url, text };
-    else                      req.postObj = { name, url, text, comments };
+    var { name, url, text } = req.body;
+    req.postObj = { name, url, text };
     next();
   }
 ];
