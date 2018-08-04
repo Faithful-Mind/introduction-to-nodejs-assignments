@@ -24,9 +24,9 @@ exports.getPostById = (postId) => Post.findById(postId);
 
 /**
  * Add a post.
- * @param {Object} postObj post object like `{ _id: Number, name: String,
-                                               url: String, text: String }`
- * @returns added post object if success else `null`
+ * @param {Object} postObj post object like `{ name: String, url: String,
+                                                            text: String }`
+ * @returns added post object containing _id if success else `null`
  */
 exports.addPost = (postObj) => {
   var { name, url, text } = postObj;
@@ -37,9 +37,9 @@ exports.addPost = (postObj) => {
 /**
  * Update a post by ID.
  * @param {Number} postId post ID to update
- * @param {Object} postObj post object like `{ _id: Number, name: String,
-                                               url: String, text: String }`
- * @returns updated post object if success else `null`
+ * @param {Object} postObj post object like `{ name: String, url: String,
+                                                            text: String }`
+ * @returns updated post object containing _id if success else `null`
  */
 exports.updatePostById = (postId, postObj) => {
   var { name, url, text } = postObj;
@@ -67,7 +67,7 @@ exports.getCommentById = (postId, commentId) =>
 
 /**
  * Add the text comment to specified post ID.
- * @param {Number} postId post ID to locate coment
+ * @param {Number} postId post ID to locate comment
  * @param {String} text comment's text content
  * @returns generated comment object like `{ commentId: Number, text: String }`
  * if success else `null`
@@ -101,7 +101,7 @@ exports.updateCommentById = (postId, commentId, text) =>
 
 /**
  * Delete a comment by comment ID & post ID.
- * @param {Number} postId post ID to locate coment
+ * @param {Number} postId post ID to locate comment
  * @param {Number} commentId comment ID to delete
  * @returns deleted comment object like `{ commentId: Number, text: String }`
  * if success else `null`
